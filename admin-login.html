@@ -1,0 +1,4 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin login</title><link rel="stylesheet" href="style.css"></head><body>
+<div class="w" style="max-width:380px;margin-top:60px"><div class="logo">LOOT<span>IFY</span> Admin</div><div class="card"><input id="e" type="email" placeholder="Email" style="margin-bottom:8px"><input id="p" type="password" placeholder="Password"><div class="err" id="er"></div><button class="btn" id="g">Log in</button></div></div>
+<script>const $=s=>document.querySelector(s);const go=async()=>{const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('#e').value,password:$('#p').value})}).then(r=>r.json());r.ok?location.href='/admin':$('#er').textContent=r.error||'Error'};
+$('#g').onclick=go;$('#p').onkeydown=e=>e.key==='Enter'&&go();</script></body></html>

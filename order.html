@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Order · Lootify</title><link rel="stylesheet" href="style.css"></head><body><header id="hd"></header><div class="w">
+<div class="card" id="c">Loading…</div></div><script src="app.js"></script><script>
+const id=new URLSearchParams(location.search).get('id');
+async function tick(){await ready;const o=await fetch('/api/orders/'+id).then(r=>r.json());if(o.error)return c.textContent='Order not found';
+ const lvl={pending:0,paid:1,delivered:2}[o.status],S=[[t('s1'),'📝'],[t('s2'),'💳'],[t('s3'),'🎮']];
+ const hd=lvl===2?['🎉 Delivered!','Your top-up is in your account.']:lvl===1?['✅ Payment confirmed','Delivering your items…']:['⏳ Awaiting payment','We will confirm automatically.'];
+ const f=t=>t?new Date(t).toLocaleString():'—';
+ c.innerHTML=`<h2 style="margin:0">${hd[0]}</h2><p class="mu">${hd[1]}</p>
+ <div class="steps">${S.map((s,i)=>`<div class="st ${i<=lvl?'d':''} ${i===lvl&&lvl<2?'a':''}"><i>${i<lvl||lvl===2?'✓':s[1]}</i>${s[0]}</div>`).join('')}</div>
+ <table style="width:100%;font-size:14px"><tr><td class="mu">Order</td><td>LT-${o.id}</td></tr><tr><td class="mu">Item</td><td>${o.game} · ${o.pack}</td></tr><tr><td class="mu">Total</td><td>$${o.total.toFixed(2)}</td></tr>
+ <tr><td class="mu">Placed</td><td>${f(o.createdAt)}</td></tr><tr><td class="mu">Paid</td><td>${f(o.paidAt)}</td></tr><tr><td class="mu">Delivered</td><td>${f(o.deliveredAt)}</td></tr></table>
+ <a href="/" class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:16px;color:#000">Back to store</a>`;
+ if(o.status!=='delivered')setTimeout(tick,3000)}tick();
+</script></body></html>

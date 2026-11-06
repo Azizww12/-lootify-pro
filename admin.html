@@ -1,0 +1,34 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin · Lootify</title><link rel="stylesheet" href="style.css"></head><body>
+<header><a class="logo" href="/admin">LOOT<span>IFY</span> Admin</a><span style="flex:1"></span><button class="hb o" id="pd">Payout details</button><button class="hb" id="lo">Log out</button></header>
+<main class="wide"><div class="tabs"><button id="t1" class="on">Dashboard</button><button id="t2">Products &amp; Pricing</button></div>
+<section id="s1"><div class="two" id="st" style="margin-top:14px"></div><h2>Orders</h2><div class="card ov2" id="od"></div><h2>Users</h2><div class="card ov2" id="us"></div></section>
+<section id="s2" hidden><div style="margin:14px 0"><button class="hb" id="np">+ Add game</button></div><div id="pl"></div></section></main>
+<script>const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const A=async(u,b)=>{const r=await fetch(u,b!==undefined?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}:{});if(r.status===401){location.href='/admin/login';throw 0}return r.json()};
+$('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>{tab(2);loadP()};
+function tab(n){$('#s1').hidden=n!==1;$('#s2').hidden=n!==2;$('#t1').classList.toggle('on',n===1);$('#t2').classList.toggle('on',n===2)}
+async function load(){const s=await A('/api/admin/stats'),o=await A('/api/admin/orders'),u=await A('/api/admin/users');
+ $('#st').innerHTML=[['Revenue (USD)','$'+s.revenue],['Cash received','$'+s.cash],['Orders',s.orders],['Users',s.users],['To deliver',s.toDeliver]].map(x=>`<div class="card"><div class="logo">${x[1]}</div><span class="mu">${x[0]}</span></div>`).join('');
+ $('#od').innerHTML=`<table class="t"><tr><th>#</th><th>User</th><th>Item</th><th>Player ID</th><th>Paid</th><th>Via</th><th>Status</th><th></th></tr>${o.map(x=>`<tr><td>${esc(x.id)}</td><td>${esc(x.email)}</td><td>${esc(x.game)} ${esc(x.pack)}</td><td>${esc(x.playerId)}</td><td>$${x.total}</td><td>${esc(x.method||'')}</td><td>${x.status}</td><td>${x.status==='paid'?`<button class="hb" onclick="act('${x.id}','deliver')">Deliver</button>`:x.status==='pending'?`<button class="hb o" onclick="act('${x.id}','cancel')">Cancel</button>`:''}</td></tr>`).join('')}</table>`;
+ $('#us').innerHTML=`<table class="t"><tr><th>Email</th><th>Provider</th><th>Points</th><th>Balance</th><th>Referred by</th><th>Adjust points</th></tr>${u.map(x=>`<tr><td>${esc(x.email)}</td><td>${x.provider}</td><td>${x.points}</td><td>$${x.balance}</td><td>${esc(x.referredBy||'')}</td><td><button class="hb o" onclick="pts('${x.id}',100)">+100</button> <button class="hb o" onclick="pts('${x.id}',-100)">−100</button></td></tr>`).join('')}</table>`}
+async function act(id,a){await A(`/api/admin/orders/${id}/${a}`,{});load()}async function pts(id,d){await A(`/api/admin/users/${id}/points`,{delta:d});load()}
+/* ---- products ---- */
+let P=[];const fin=(p,d)=>Math.round(p*(1-d/100)*100)/100;
+async function loadP(){P=await A('/api/admin/products');renderP()}
+function renderP(){$('#pl').innerHTML=P.map(pc).join('')||'<p class="mu">No games yet.</p>'}
+function pc(p,i){return `<div class="card" id="pc${i}"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+ <label class="mu">Game name<input class="n" value="${esc(p.name)}"></label><label class="mu">Icon (emoji fallback)<input class="ic" value="${esc(p.icon)}"></label>
+ <label class="mu">Image URL (https://…)<input class="im" value="${esc(p.image)}"></label><label class="mu"><br><input type="checkbox" class="ac" style="width:auto" ${p.active?'checked':''}> Visible in store</label></div>
+ <div class="ov2"><table class="t"><tr><th>Package</th><th>Price (USD)</th><th>Discount %</th><th>Final</th><th></th></tr>${p.packs.map((k,j)=>`<tr data-id="${esc(k.id)}"><td><input class="l" value="${esc(k.label)}"></td><td><input class="pr" type="number" step="0.01" min="0.01" value="${k.price}" oninput="fv(this)"></td><td><input class="d" type="number" min="0" max="90" value="${k.discount}" oninput="fv(this)"></td><td class="f">$${fin(k.price,k.discount)}</td><td><button class="hb o" onclick="rp(${i},${j})">✕</button></td></tr>`).join('')}</table></div>
+ <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="hb o" onclick="ap(${i})">+ Package</button><button class="hb" onclick="sp(${i})">Save</button>${p.id?`<button class="hb o" onclick="dp(${i})">Delete game</button>`:''}</div><div class="err" id="pe${i}"></div></div>`}
+function fv(el){const r=el.closest('tr');r.querySelector('.f').textContent='$'+fin(+r.querySelector('.pr').value,+r.querySelector('.d').value)}
+function grab(i){const c=$('#pc'+i),p=P[i];p.name=c.querySelector('.n').value;p.icon=c.querySelector('.ic').value;p.image=c.querySelector('.im').value;p.active=c.querySelector('.ac').checked;
+ p.packs=[...c.querySelectorAll('tr[data-id]')].map(r=>({id:r.dataset.id,label:r.querySelector('.l').value,price:+r.querySelector('.pr').value,discount:+r.querySelector('.d').value||0}))}
+function ap(i){grab(i);P[i].packs.push({id:'',label:'',price:1,discount:0});renderP()}
+function rp(i,j){grab(i);P[i].packs.splice(j,1);renderP()}
+async function sp(i){grab(i);const r=await A('/api/admin/products',P[i]);if(r.error)$('#pe'+i).textContent=r.error;else loadP()}
+async function dp(i){if(confirm('Delete '+P[i].name+'?')){await A(`/api/admin/products/${P[i].id}/delete`,{});loadP()}}
+$('#np').onclick=()=>{P.unshift({id:'',name:'',icon:'🎮',image:'',active:true,packs:[{id:'',label:'',price:1,discount:0}]});renderP()};
+$('#lo').onclick=async()=>{await A('/api/admin/logout',{});location.href='/admin/login'};
+$('#pd').onclick=async()=>{const d=await A('/api/admin/payout-details');alert('OKX UID: '+(d.okx||'-')+'\nPayPal: '+(d.paypal||'-')+'\nIBAN: '+(d.iban||'-'))};
+load();</script></body></html>

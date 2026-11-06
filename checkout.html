@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checkout · Lootify</title><link rel="stylesheet" href="style.css"></head><body><header id="hd"></header><div class="w">
+<div class="card"><b id="sum"></b><div id="step1"><p class="mu">Player ID / UID</p><input id="pid"><label class="mu"><input type="checkbox" id="ub" style="width:auto"> <span id="ubt"></span></label><p class="mu" id="chg"></p><button class="btn" id="go">Continue to payment</button></div></div>
+<div id="pay" hidden><div class="tabs"><button data-m="card" class="on">💳 Card / Wallets</button><button data-m="paypal">PayPal</button><button data-m="crypto">₿ USDT</button></div>
+<div class="card" id="card"><div id="express"></div><div id="pe" style="margin-top:12px"></div><button class="btn" id="cbtn">🔒 Pay now</button><div class="err" id="err"></div></div>
+<div class="card" id="paypal" hidden><div id="pp"></div></div>
+<div class="card" id="crypto" hidden></div></div></div>
+<script src="https://js.stripe.com/v3/"></script><script src="app.js"></script><script>
+const $=s=>document.querySelector(s),q=new URLSearchParams(location.search);
+const j=(u,b)=>fetch(u,b?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}:{}).then(r=>r.json());
+const done=()=>location.href='order.html?id='+order.id;let order,cfg,cat,stripe,els,inited={};
+(async()=>{await ready;if(!me)authModal();$('#ubt').textContent=t('useBal');$('#chg').textContent=t('charged');$('#go').textContent=t('cont');cfg=await j('/api/config');cat=await j('/api/catalog');const g=cat.find(x=>x.id===q.get('game')),p=g&&g.packs.find(k=>k.id===q.get('pack'));
+ $('#sum').innerHTML=p?`${esc(g.name)} · ${esc(p.label)} · ${p.discount?`<s class="mu">${money(p.price)}</s> `:''}${money(p.final)}`:'Invalid item'})();
+$('#go').onclick=async()=>{if(!me)return authModal();const pid=$('#pid').value.trim();if(!pid)return;
+ order=await j('/api/orders',{game:q.get('game'),pack:q.get('pack'),playerId:pid,useBalance:$('#ub').checked});if(order.error)return alert(order.error);if(order.total===0)return done();
+ $('#step1').hidden=true;$('#pay').hidden=false;show('card')};
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>show(b.dataset.m));
+function show(m){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+ ['card','paypal','crypto'].forEach(x=>$('#'+x).hidden=x!==m);if(!inited[m]){inited[m]=1;({card:initCard,paypal:initPP,crypto:initCrypto})[m]()}}
+async function initCard(){const{clientSecret}=await j(`/api/orders/${order.id}/stripe`,{});stripe=Stripe(cfg.stripePk);
+ els=stripe.elements({clientSecret,appearance:{theme:'night',variables:{colorPrimary:'#ffd60a'}}});
+ const ex=els.create('expressCheckout');ex.mount('#express');ex.on('confirm',pay);
+ els.create('payment',{layout:'tabs'}).mount('#pe');$('#cbtn').onclick=pay}
+async function pay(){$('#cbtn').disabled=true;const{error}=await stripe.confirmPayment({elements:els,confirmParams:{return_url:location.origin+'/order.html?id='+order.id}});
+ if(error){$('#err').textContent=error.message;$('#cbtn').disabled=false}}
+function initPP(){const s=document.createElement('script');s.src=`https://www.paypal.com/sdk/js?client-id=${cfg.paypalId}&currency=USD`;
+ s.onload=()=>paypal.Buttons({style:{color:'gold',shape:'rect'},createOrder:async()=>(await j(`/api/orders/${order.id}/paypal/create`,{})).id,
+  onApprove:async d=>{await j(`/api/orders/${order.id}/paypal/capture`,{paypalOrderId:d.orderID});done()}}).render('#pp');document.head.appendChild(s)}
+async function initCrypto(){const c=await j(`/api/orders/${order.id}/crypto`,{});
+ $('#crypto').innerHTML=`<div style="text-align:center"><img src="${c.qr}" width="200" style="border-radius:12px;background:#fff;padding:8px"><h3>Send exactly <span style="color:var(--y)">${c.amount} USDT</span></h3>
+ <p class="mu">Network: TRON (TRC20) only · expires in 30 min</p></div><div class="addr" id="ad">${c.address}</div><button class="btn" onclick="navigator.clipboard.writeText('${c.address}')">Copy address</button>
+ <p class="mu" id="cs">⏳ Waiting for payment… detected automatically.</p>`;
+ const t=setInterval(async()=>{const o=await j('/api/orders/'+order.id);if(o.status!=='pending'){clearInterval(t);done()}},4000)}
+</script></body></html>

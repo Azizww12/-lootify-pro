@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lootify</title><link rel="stylesheet" href="style.css"></head><body>
+<header id="hd"></header><main class="wide"><div class="hero"><h1 id="h1" style="margin:0"></h1></div><h2 id="pop"></h2><div class="grid" id="grid"></div><div id="acct"></div></main>
+<script src="app.js"></script><script>
+let cat=[];const $=s=>document.querySelector(s);
+ready.then(async()=>{cat=await api('/api/catalog');$('#h1').textContent=t('hero');$('#pop').textContent=t('popular');draw();if(me)account()});
+window.onSearch=v=>draw(v);
+const pic=g=>g.image?`<img src="${esc(g.image)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:12px" onerror="this.outerHTML='<div class=ic>${esc(g.icon)}</div>'">`:`<div class="ic">${esc(g.icon)}</div>`;
+const price=k=>k.discount?`<s class="mu">${money(k.price)}</s> <b style="color:var(--y)">${money(k.final)}</b> <span style="background:var(--y);color:#000;border-radius:6px;padding:1px 6px;font-size:12px;font-weight:800">-${k.discount}%</span>`:`<b style="color:var(--y)">${money(k.final)}</b>`;
+function draw(f=''){$('#grid').innerHTML=cat.filter(g=>g.name.toLowerCase().includes(f.toLowerCase())).map(g=>{const m=Math.max(...g.packs.map(k=>k.discount));return`<div class="game" onclick="pick('${esc(g.id)}')" style="position:relative">${m?`<span style="position:absolute;top:8px;inset-inline-end:8px;background:var(--y);color:#000;border-radius:6px;padding:1px 6px;font-size:12px;font-weight:800">-${m}%</span>`:''}${pic(g)}<b>${esc(g.name)}</b><span class="mu">${t('topup')}</span></div>`}).join('')}
+function pick(id){const g=cat.find(x=>x.id===id);modal(`<h3 style="margin-top:0">${esc(g.name)}</h3>${g.packs.map(k=>`<div class="pack" onclick="location='checkout.html?game=${encodeURIComponent(g.id)}&pack=${encodeURIComponent(k.id)}'"><span>${esc(k.label)}</span><span>${price(k)}</span></div>`).join('')}`)}
+async function account(){const o=await api('/api/my/orders'),link=location.origin+'/?ref='+me.refCode;
+ $('#acct').innerHTML=`<h2>${t('acct')}</h2><div class="two"><div class="card"><div style="display:flex;gap:30px"><div><div class="logo">${me.points}</div><span class="mu">${t('points')}</span></div><div><div class="logo">${money(me.balance)}</div><span class="mu">${t('balance')}</span></div></div>
+ <button class="btn" onclick="redeem()">${t('redeem')}</button><p class="mu">${t('refInfo')}</p><b>${t('refLink')}</b><div style="display:flex;gap:6px;margin-top:6px"><input readonly value="${esc(link)}"><button class="hb" onclick="navigator.clipboard.writeText('${esc(link)}')">${t('copy')}</button></div></div>
+ <div class="card"><b>${t('orders')}</b>${o.length?`<table class="t">${o.slice(0,8).map(x=>`<tr><td><a href="order.html?id=${x.id}">LT-${x.id}</a></td><td>${esc(x.game)}</td><td>${x.status}</td></tr>`).join('')}</table>`:`<p class="mu">${t('none')}</p>`}</div></div>`}
+async function redeem(){const r=await api('/api/redeem',{});if(r.error)return alert(r.error);me=r.user;account()}
+</script></body></html>
